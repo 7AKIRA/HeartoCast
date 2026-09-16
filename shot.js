@@ -1,5 +1,7 @@
 const puppeteer = require('puppeteer');
 
+const SITE = 'https://hearto.ixtj.dev/';
+
 (async () => {
   const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
   const page = await browser.newPage();
@@ -7,7 +9,7 @@ const puppeteer = require('puppeteer');
   await page.emulateTimezone('Asia/Seoul');
   await page.setViewport({ width: 900, height: 1150, deviceScaleFactor: 2 });
 
-  await page.goto('https://hearto.ixtj.dev/', {
+  await page.goto(SITE, {
     waitUntil: 'networkidle0',
     timeout: 60000,
   });
@@ -16,8 +18,16 @@ const puppeteer = require('puppeteer');
   const shot = await page.screenshot({ type: 'png' });
   await browser.close();
 
+  const now = new Date().toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
   const form = new FormData();
-  form.append('content', '두타예보');
+  form.append('content', `두타예보 · ${now} 기준\n<${SITE}>`);
   form.append(
     'files[0]',
     new Blob([shot], { type: 'image/png' }),
