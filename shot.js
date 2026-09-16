@@ -133,6 +133,32 @@ const shoot = async (page, slotLabel) => {
 
   const shots = [shotNow, shotNext].filter(Boolean);
 
+  // 두 장을 가로로 나란히 합치기
+  let merged;
+  if (shots.length === 2) {
+    const metas = await Promise.all(shots.map((s) => sharp(s).metadata()));
+    const gap = 24;
+    const height = Math.max(metas[0].height, metas[1].height);
+    const width = metas[0].width + gap + metas[1].width;
+
+    merged = await sharp({
+      create: {
+        width,
+        height,
+        channels: 4,
+        background: { r: 10, g: 10, b: 10, alpha: 1 },
+      },
+    })
+      .composite([
+        { input: shots[0], left: 0, top: 0 },
+        { input: shots[1], left: metas[0].width + gap, top: 0 },
+      ])
+      .png()
+      .toBuffer();
+  } else {
+    merged = shots[0];
+  }
+
   const line = `${dateNow} ${nowSlot} 현재 날씨 > ${dateNext} ${nextSlot} 다음 날씨`;
 
   const form = new FormData();
@@ -140,9 +166,7 @@ const shoot = async (page, slotLabel) => {
     'content',
     `${line}\n출처: <${SITE}> · <https://hearto.ixtj.dev/>`
   );
-  shots.forEach((s, i) => {
-    form.append(`files[${i}]`, new Blob([s], { type: 'image/png' }), `slot${i}.png`);
-  });
+  form.append('files[0]', new Blob([merged], { type: 'image/png' }), 'forecast.png');
 
   const res = await fetch(process.env.DISCORD_WEBHOOK, { method: 'POST', body: form });
   console.log('디스코드 응답:', res.status);
