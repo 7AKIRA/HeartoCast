@@ -1,4 +1,5 @@
 const puppeteer = require('puppeteer');
+const sharp = require('sharp');
 
 const SITE = 'https://heartopia.th.gl/ko/forecast';
 
