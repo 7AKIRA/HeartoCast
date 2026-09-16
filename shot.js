@@ -34,7 +34,7 @@ const grab = async (page) =>
   const page = await browser.newPage();
 
   await page.emulateTimezone('Asia/Seoul');
-  await page.setViewport({ width: 1500, height: 1200, deviceScaleFactor: 2 });
+  await page.setViewport({ width: 1500, height: 2200, deviceScaleFactor: 2 });
 
   await page.goto(SITE, { waitUntil: 'networkidle0', timeout: 60000 });
   await new Promise((r) => setTimeout(r, 6000));
@@ -77,6 +77,7 @@ const grab = async (page) =>
       shots.push(
         await page.screenshot({
           type: 'png',
+          fullPage: true,
           clip: {
             x: box.x - 8,
             y: box.y - 8,
@@ -101,7 +102,10 @@ const grab = async (page) =>
   });
 
   const form = new FormData();
-  form.append('content', `두타예보 · ${now} 기준\n출처: <${SITE}>`);
+  form.append(
+    'content',
+    `두타예보 · ${now} 기준\n출처: <${SITE}> · <https://hearto.ixtj.dev/>`
+  );
   shots.forEach((s, i) => {
     form.append(`files[${i}]`, new Blob([s], { type: 'image/png' }), `day${i}.png`);
   });
