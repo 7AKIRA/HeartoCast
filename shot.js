@@ -160,13 +160,47 @@ const shoot = async (page, slotLabel) => {
     merged = shots[0];
   }
 
-  const line = `${dateNow} ${nowSlot} 현재 날씨 > ${dateNext} ${nextSlot} 다음 날씨`;
+    const now = new Date().toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  // 구간 라벨을 사람 말로
+  const pretty = (slot) => {
+    const map = {
+      '00–06': '자정–06시',
+      '06–12': '06시–정오',
+      '12–18': '정오–18시',
+      '18–24': '18시–자정',
+    };
+    return map[slot] || slot;
+  };
+
+  const desc = [
+    '[두두타.TH.GL](https://heartopia.th.gl/ko/forecast)',
+    '[두타예보](https://hearto.ixtj.dev/)',
+    '',
+    `**현재 날씨: ${dateNow} ${pretty(nowSlot)}**`,
+    '∇',
+    `**다음 날씨: ${dateNext} ${pretty(nextSlot)}**`,
+  ].join('\n');
+
+  const payload = {
+    content: `두타예보 · ${now} 기준`,
+    embeds: [
+      {
+        description: desc,
+        color: 0xf0a020,
+        image: { url: 'attachment://forecast.png' },
+      },
+    ],
+  };
 
   const form = new FormData();
-  form.append(
-    'content',
-    `${line}\n출처: <${SITE}> · <https://hearto.ixtj.dev/>`
-  );
+  form.append('payload_json', JSON.stringify(payload));
   form.append('files[0]', new Blob([merged], { type: 'image/png' }), 'forecast.png');
 
   const res = await fetch(process.env.DISCORD_WEBHOOK, { method: 'POST', body: form });
