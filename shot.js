@@ -77,7 +77,6 @@ const grab = async (page) =>
       shots.push(
         await page.screenshot({
           type: 'png',
-          fullPage: true,
           clip: {
             x: box.x - 8,
             y: box.y - 8,
