@@ -2,7 +2,7 @@ name: HeartoCast
 
 on:
   schedule:
-    - cron: '1 0,6,12,18 * * *'
+    - cron: '1 0,6,12,17,18 * * *'
   workflow_dispatch:
 
 jobs:
