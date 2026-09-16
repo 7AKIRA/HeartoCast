@@ -2,58 +2,92 @@ const puppeteer = require('puppeteer');
 
 const SITE = 'https://heartopia.th.gl/ko/forecast';
 
+const grab = async (page) =>
+  await page.evaluate(() => {
+    const label = [...document.querySelectorAll('*')].find(
+      (el) =>
+        el.children.length === 0 &&
+        /HOURLY FORECAST/i.test(el.textContent || '')
+    );
+    if (!label) return null;
+
+    // 라벨에서 위로 올라가며 '4개 구간'을 모두 담은 가장 작은 상자를 찾는다
+    let node = label.parentElement;
+    for (let i = 0; i < 6 && node; i++) {
+      const t = node.textContent || '';
+      if (/00–06|00-06/.test(t) && /18–24|18-24/.test(t)) break;
+      node = node.parentElement;
+    }
+    if (!node) return null;
+
+    const r = node.getBoundingClientRect();
+    return {
+      x: r.x + window.scrollX,
+      y: r.y + window.scrollY,
+      width: r.width,
+      height: r.height,
+    };
+  });
+
 (async () => {
   const browser = await puppeteer.launch({ args: ['--no-sandbox'] });
   const page = await browser.newPage();
 
   await page.emulateTimezone('Asia/Seoul');
-  await page.setViewport({ width: 1400, height: 900, deviceScaleFactor: 2 });
+  await page.setViewport({ width: 1500, height: 1200, deviceScaleFactor: 2 });
 
   await page.goto(SITE, { waitUntil: 'networkidle0', timeout: 60000 });
-  await new Promise((r) => setTimeout(r, 5000));
-
-  // 배경을 흰색으로, 글자를 검은색으로
-  await page.addStyleTag({
-    content: `
-      html, body, * {
-        background-color: #ffffff !important;
-        color: #111111 !important;
-        border-color: #dddddd !important;
-      }
-    `,
-  });
-  await new Promise((r) => setTimeout(r, 500));
-
-  // 시간별 예보 영역만 찾기
-  const findBlock = async () =>
-    await page.evaluateHandle(() => {
-      const heads = [...document.querySelectorAll('*')].filter(
-        (el) =>
-          el.children.length === 0 &&
-          /HOURLY FORECAST|시간별/i.test(el.textContent || '')
-      );
-      if (!heads.length) return null;
-      let node = heads[0];
-      for (let i = 0; i < 4 && node.parentElement; i++) node = node.parentElement;
-      return node;
-    });
+  await new Promise((r) => setTimeout(r, 6000));
 
   const shots = [];
 
   for (let day = 0; day < 2; day++) {
     if (day > 0) {
-      // 오른쪽 화살표 클릭
-      await page.evaluate(() => {
-        const btns = [...document.querySelectorAll('button')];
-        const next = btns.find((b) => (b.textContent || '').includes('→'));
-        if (next) next.click();
+      // 날짜 헤더 오른쪽의 '다음' 버튼 클릭
+      const moved = await page.evaluate(() => {
+        const label = [...document.querySelectorAll('*')].find(
+          (el) =>
+            el.children.length === 0 &&
+            /HOURLY FORECAST/i.test(el.textContent || '')
+        );
+        if (!label) return false;
+        let box = label.parentElement;
+        for (let i = 0; i < 6 && box; i++) {
+          if (box.querySelectorAll('button').length >= 2) break;
+          box = box.parentElement;
+        }
+        if (!box) return false;
+        const btns = [...box.querySelectorAll('button')];
+        if (btns.length < 2) return false;
+        // 가장 오른쪽에 있는 버튼
+        btns.sort(
+          (a, b) => a.getBoundingClientRect().x - b.getBoundingClientRect().x
+        );
+        btns[btns.length - 1].click();
+        return true;
       });
+      console.log('다음날 이동:', moved);
       await new Promise((r) => setTimeout(r, 3000));
     }
 
-    const block = await findBlock();
-    const el = block.asElement();
-    shots.push(el ? await el.screenshot({ type: 'png' }) : await page.screenshot({ type: 'png' }));
+    const box = await grab(page);
+    console.log(`day${day} 영역:`, box);
+
+    if (box && box.width > 100 && box.height > 100) {
+      shots.push(
+        await page.screenshot({
+          type: 'png',
+          clip: {
+            x: box.x - 8,
+            y: box.y - 8,
+            width: box.width + 16,
+            height: box.height + 16,
+          },
+        })
+      );
+    } else {
+      shots.push(await page.screenshot({ type: 'png' }));
+    }
   }
 
   await browser.close();
@@ -67,7 +101,7 @@ const SITE = 'https://heartopia.th.gl/ko/forecast';
   });
 
   const form = new FormData();
-  form.append('content', `두타예보 · ${now} 기준\n출처: ${SITE}`);
+  form.append('content', `두타예보 · ${now} 기준\n출처: <${SITE}>`);
   shots.forEach((s, i) => {
     form.append(`files[${i}]`, new Blob([s], { type: 'image/png' }), `day${i}.png`);
   });
