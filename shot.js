@@ -4,14 +4,16 @@ const sharp = require('sharp');
 const SITE = 'https://heartopia.th.gl/ko/forecast';
 
 // 현재 시각(KST) → 구간 인덱스 0~3
-const kstHour = () =>
-  Number(
+const kstHour = () => {
+  const h = Number(
     new Date().toLocaleString('en-US', {
       timeZone: 'Asia/Seoul',
       hour: '2-digit',
       hour12: false,
     })
   );
+  return h % 24; // 24시로 나오는 경우를 0으로
+};
 
 const SLOTS = ['00–06', '06–12', '12–18', '18–24'];
 
