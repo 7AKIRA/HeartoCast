@@ -1,8 +1,6 @@
 name: Weather
 
 on:
-  schedule:
-    - cron: '1 21,3,9,15 * * *'
   workflow_dispatch:
 
 jobs:
